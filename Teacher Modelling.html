@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Elkonin Box Spelling Game</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-color: #f8f8ff;
+      padding: 20px;
+    }
+    .box-container, .counter-container {
+      display: flex;
+      justify-content: center;
+      margin: 20px 0;
+    }
+    .box, .counter-slot {
+      width: 70px;
+      height: 70px;
+      border: 2px solid #000;
+      margin: 0 10px;
+      font-size: 36px;
+      text-align: center;
+      line-height: 70px;
+      background-color: #ffffff;
+    }
+    .counter {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background-color: red;
+      margin: 10px;
+      cursor: grab;
+    }
+    button {
+      margin: 15px 10px;
+      padding: 10px 20px;
+      font-size: 18px;
+    }
+    #instruction {
+      font-size: 20px;
+      margin-top: 20px;
+      min-height: 60px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Let’s Spell Together!</h1>
+  <p>Turn to your Spelling worksheet so we can do it together.</p>
+
+  <div id="instruction">Click "Begin" to start.</div>
+  <div>
+    <button id="beginBtn" onclick="begin()">Begin</button>
+    <button id="backBtn" onclick="previousStep()" disabled>Back</button>
+    <button id="nextBtn" onclick="nextStep()" disabled>Next Step</button>
+    <button id="restartBtn" onclick="restart()" style="background-color:#f44336; color:white;">Begin From Start</button>
+  </div>
+
+  <h3>Sound Boxes (Drag counters here)</h3>
+  <div class="counter-container" id="counters">
+    <div class="counter" id="counter0" draggable="true" ondragstart="drag(event)"></div>
+    <div class="counter" id="counter1" draggable="true" ondragstart="drag(event)"></div>
+    <div class="counter" id="counter2" draggable="true" ondragstart="drag(event)"></div>
+  </div>
+
+  <div class="box-container">
+    <div class="counter-slot" id="slot0" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+    <div class="counter-slot" id="slot1" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+    <div class="counter-slot" id="slot2" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+  </div>
+
+  <h3>Letter Spelling Boxes</h3>
+  <div class="box-container">
+    <div class="box" id="letter0"></div>
+    <div class="box" id="letter1"></div>
+    <div class="box" id="letter2"></div>
+  </div>
+
+  <audio id="audioPlayer"></audio>
+
+  <script>
+    const audioSources = {
+      m: "https://github.com/limkimsze-maker/consonants/raw/c296237836e0060e623971f0f897f81a925ab4bd/sound_m.mp3",
+      a: "https://github.com/limkimsze-maker/consonants/raw/c296237836e0060e623971f0f897f81a925ab4bd/sound_a.mp3",
+      p: "https://github.com/limkimsze-maker/consonants/raw/453ccf81398cf2c6703e3c77eabf2d7c1ecafded/sound_p.mp3",
+      h: "https://github.com/limkimsze-maker/consonants/raw/453ccf81398cf2c6703e3c77eabf2d7c1ecafded/sound_h.mp3",
+      o: "https://github.com/limkimsze-maker/consonants/raw/c296237836e0060e623971f0f897f81a925ab4bd/sound_o.mp3",
+      t: "https://github.com/limkimsze-maker/consonants/raw/453ccf81398cf2c6703e3c77eabf2d7c1ecafded/sound_t.mp3"
+    };
+
+    const words = [
+      {
+        word: "map",
+        meaning: "A map shows places. I see a map on the wall.",
+        sounds: ["/m/", "/a/", "/p/"],
+        letters: ["m", "a", "p"],
+        wordAudio: "https://kim-sze.github.io/elkonin/map.mp3"
+      },
+      {
+        word: "hot",
+        meaning: "Hot means something is warm. The soup is hot.",
+        sounds: ["/h/", "/o/", "/t/"],
+        letters: ["h", "o", "t"],
+        wordAudio: "https://kim-sze.github.io/elkonin/hot.mp3"
+      }
+    ];
+
+    let step = 0;
+    let currentWordIndex = 0;
+
+    const audioPlayer = document.getElementById("audioPlayer");
+    const instruction = document.getElementById("instruction");
+    const beginBtn = document.getElementById("beginBtn");
+    const backBtn = document.getElementById("backBtn");
+    const nextBtn = document.getElementById("nextBtn");
+    const restartBtn = document.getElementById("restartBtn");
+
+    let waitingForCounters = false;
+    let countersPlaced = 0;
+
+    function speakText(text, onEnd) {
+      if (!window.speechSynthesis) {
+        console.warn("Speech Synthesis not supported");
+        if (onEnd) onEnd();
+        return;
+      }
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.onend = () => {
+        if (onEnd) onEnd();
+      };
+      utter.onerror = () => {
+        if (onEnd) onEnd();
+      };
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utter);
+    }
+
+    function playAudio(url, onEnd) {
+      audioPlayer.src = url;
+      audioPlayer.onended = () => {
+        audioPlayer.onended = null;
+        if (onEnd) onEnd();
+      };
+      audioPlayer.onerror = () => {
+        if (onEnd) onEnd();
+      };
+      audioPlayer.play().catch(() => {
+        if (onEnd) onEnd();
+      });
+    }
+
+    function clearCounters() {
+      const counters = document.querySelectorAll(".counter");
+      counters.forEach(c => {
+        if (c.parentElement.id !== "counters") {
+          document.getElementById("counters").appendChild(c);
+        }
+      });
+    }
+
+    function clearSlots() {
+      for (let i = 0; i < 3; i++) {
+        const slot = document.getElementById(`slot${i}`);
+        slot.innerHTML = "";
+      }
+    }
+
+    function clearLetters() {
+      for (let i = 0; i < 3; i++) {
+        const letterBox = document.getElementById(`letter${i}`);
+        letterBox.textContent = "";
+      }
+    }
+
+    function moveCounterToSlot(counterId, slotId) {
+      const counter = document.getElementById(counterId);
+      const slot = document.getElementById(slotId);
+      if (slot && counter) {
+        slot.appendChild(counter);
+      }
+    }
+
+    function fillLetterBox(index, letter) {
+      const letterBox = document.getElementById(`letter${index}`);
+      letterBox.textContent = letter.toUpperCase();
+    }
+
+    function begin() {
+      beginBtn.disabled = true;
+      nextBtn.disabled = false;
+      backBtn.disabled = true;
+      restartBtn.disabled = false;
+      step = 0;
+      currentWordIndex = 0;
+      clearCounters();
+      clearSlots();
+      clearLetters();
+      instruction.textContent = "";
+      nextStep();
+    }
+
+    function restart() {
+      // reset all to start
+      beginBtn.disabled = false;
+      nextBtn.disabled = true;
+      backBtn.disabled = true;
+      restartBtn.disabled = false;
+      step = 0;
+      currentWordIndex = 0;
+      clearCounters();
+      clearSlots();
+      clearLetters();
+      instruction.textContent = 'Click "Begin" to start.';
+      waitingForCounters = false;
+      countersPlaced = 0;
+      // cancel any ongoing speech
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+      audioPlayer.pause();
+      audioPlayer.currentTime = 0;
+    }
+
+    function nextStep() {
+      backBtn.disabled = step === 0;
+      const word = words[currentWordIndex];
+
+      // When waiting for user to drag counters, block nextStep from proceeding.
+      if (waitingForCounters) {
+        instruction.textContent = "Please place the counters into the boxes.";
+        return;
+      }
+
+      switch(step) {
+        case 0:
+          instruction.textContent = "Watch me spell some words. Remember how I do it. You will have to do it later.";
+          speakText(instruction.textContent, () => {
+            nextBtn.disabled = false;
+          });
+          break;
+
+        case 1:
+          instruction.textContent = `Say the word ${word.word}.`;
+          nextBtn.disabled = true;
+          speakText(`Say the word ${word.word}`, () => {
+            playAudio(word.wordAudio, () => {
+              nextBtn.disabled = false;
+            });
+          });
+          break;
+
+        case 2:
+          instruction.textContent = word.meaning;
+          speakText(word.meaning, () => {
+            nextBtn.disabled = false;
+          });
+          break;
+
+        case 3:
+          instruction.textContent = `Say again: ${word.word}.`;
+          nextBtn.disabled = true;
+          speakText(`Say again ${word.word}`, () => {
+            playAudio(word.wordAudio, () => {
+              nextBtn.disabled = false;
+            });
+          });
+          break;
+
+        case 4:
+          instruction.textContent = "Now, track the spelling using the counters and move each counter into the boxes one by one.";
+          waitingForCounters = true;
+          countersPlaced = 0;
+          nextBtn.disabled = true;
+          break;
+
+        case 5:
+          // After counters placed, sound out letters one by one and fill letter boxes
+          speakLettersAndFillBoxes(words[currentWordIndex].letters, 0);
+          nextBtn.disabled = true;
+          break;
+
+        case 6:
+          instruction.textContent = `I blend and check if this is the word I want to spell. ${word.word}.`;
+          speakText(instruction.textContent, () => {
+            nextBtn.disabled = false;
+          });
+          break;
+
+        case 7:
+          instruction.textContent = "I spell this word in the syllable cell.";
+          speakText(instruction.textContent, () => {
+            nextBtn.disabled = false;
+          });
+          break;
+
+        case 8:
+          currentWordIndex++;
+          if (currentWordIndex >= words.length) {
+            instruction.textContent = "✅ All words completed!";
+            speakText("Great job spelling all the words!");
+            nextBtn.disabled = true;
+            backBtn.disabled = true;
+            beginBtn.disabled = false;
+          } else {
+            step = -1; // will increment to 0 after next line
+            clearCounters();
+            clearSlots();
+            clearLetters();
+            instruction.textContent = "";
+            nextBtn.disabled = false;
+          }
+          break;
+
+        default:
+          nextBtn.disabled = false;
+          break;
+      }
+
+      step++;
+    }
+
+    function previousStep() {
+      if (step > 0) step--;
+      if (step < 0) {
+        if (currentWordIndex > 0) {
+          currentWordIndex--;
+          step = 7; // last step for previous word before next
+          clearCounters();
+          clearSlots();
+          clearLetters();
+          instruction.textContent = "";
+        } else {
+          step = 0;
+        }
+      }
+
+      backBtn.disabled = step === 0 && currentWordIndex === 0;
+      nextBtn.disabled = false;
+
+      const word = words[currentWordIndex];
+      switch(step) {
+        case 0:
+          instruction.textContent = "Watch me spell some words. Remember how I do it. You will have to do it later.";
+          break;
+
+        case 1:
+          instruction.textContent = `Say the word ${word.word}.`;
+          break;
+
+        case 2:
+          instruction.textContent = word.meaning;
+          break;
+
+        case 3:
+          instruction.textContent = `Say again: ${word.word}.`;
+          break;
+
+        case 4:
+          instruction.textContent = "Now, track the spelling using the counters and move each counter into the boxes one by one.";
+          waitingForCounters = true;
+          countersPlaced = 0;
+          break;
+
+        case 5:
+          instruction.textContent = "Sounding out letters and filling boxes...";
+          break;
+
+        case 6:
+          instruction.textContent = `I blend and check if this is the word I want to spell. ${word.word}.`;
+          break;
+
+        case 7:
+          instruction.textContent = "I spell this word in the syllable cell.";
+          break;
+
+        default:
+          instruction.textContent = "";
+          break;
+      }
+    }
+
+    function allowDrop(ev) {
+      ev.preventDefault();
+    }
+
+    function drag(ev) {
+      ev.dataTransfer.setData("text", ev.target.id);
+    }
+
+    function drop(ev) {
+      ev.preventDefault();
+      const data = ev.dataTransfer.getData("text");
+      const slot = ev.target;
+      // Only accept drop on empty slots, and only when waiting for counters
+      if (slot.classList.contains("counter-slot") && !slot.hasChildNodes() && waitingForCounters) {
+        slot.appendChild(document.getElementById(data));
+        const idx = parseInt(slot.id.replace("slot", ""), 10);
+        // Play the phoneme sound only when counter dropped
+        const letter = words[currentWordIndex].letters[idx];
+        playAudio(audioSources[letter]);
+        countersPlaced++;
+
+        // When all 3 counters placed, enable next button to proceed
+        if (countersPlaced === 3) {
+          waitingForCounters = false;
+          nextBtn.disabled = false;
+          instruction.textContent = "All counters placed! Click 'Next Step' to sound out letters and spell.";
+        }
+      }
+    }
+
+    function speakLettersAndFillBoxes(letters, index) {
+      if (index >= letters.length) {
+        nextBtn.disabled = false;
+        return;
+      }
+      const letter = letters[index];
+      // Speak letter sound and letter name separately with pauses
+      speakText(`Letter sound ${letter}`, () => {
+        playAudio(audioSources[letter], () => {
+          speakText(`Letter name ${letter.toUpperCase()}`, () => {
+            fillLetterBox(index, letter);
+            // Small delay before next letter
+            setTimeout(() => {
+              speakLettersAndFillBoxes(letters, index + 1);
+            }, 300);
+          });
+        });
+      });
+    }
+
+    // Initialize on load
+    restart();
+  </script>
+</body>
+</html>
