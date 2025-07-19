@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Word Blending Game</title>
+  <style>
+    body {
+      font-family: 'Comic Sans MS', cursive;
+      background: linear-gradient(to bottom, #ffecd2, #fcb69f);
+      text-align: center;
+      padding: 30px;
+    }
+    h1 {
+      color: #333;
+      font-size: 2.5em;
+    }
+    .card {
+      font-size: 64px;
+      border: 3px solid #444;
+      padding: 30px 60px;
+      margin: 30px auto;
+      background: #fff9c4;
+      border-radius: 20px;
+      box-shadow: 4px 4px 15px rgba(0, 0, 0, 0.2);
+      display: inline-block;
+    }
+    button {
+      margin: 10px;
+      padding: 14px 24px;
+      font-size: 18px;
+      border: none;
+      border-radius: 12px;
+      background-color: #00bcd4;
+      color: white;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background-color: #008ba3;
+    }
+    #meaningContainer {
+      margin-top: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      font-size: 22px;
+      color: #444;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    #meaningText {
+      flex: 1;
+      text-align: left;
+    }
+    #meaningImage {
+      max-width: 220px;
+      border-radius: 12px;
+      box-shadow: 3px 3px 10px rgba(0,0,0,0.2);
+    }
+    .progress {
+      font-size: 20px;
+      margin-top: 20px;
+      color: #222;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Let’s Blend Some Words!</h1>
+
+<div id="wordCard" class="card">---</div>
+
+<div>
+  <button onclick="playRime()">a) Blend Rime</button>
+  <button onclick="playOnset()">b) Blend Onset</button>
+  <button onclick="playWord()">c) Blend Word</button>
+  <button onclick="showMeaning()">d) Show Meaning</button>
+</div>
+
+<div>
+  <br>
+  <button onclick="nextWord()">🔁 Next Word</button>
+</div>
+
+<div id="meaningContainer" style="display:none;">
+  <div id="meaningText"></div>
+  <img id="meaningImage" src="" alt="Meaning image" />
+</div>
+
+<div class="progress" id="progressDisplay">Word 1 of 3</div>
+
+<script>
+const audioSources = {
+  b: "https://github.com/limkimsze-maker/consonants/raw/main/sound_b.mp3",
+  a: "https://github.com/limkimsze-maker/consonants/raw/main/sound_a.mp3",
+  g: "https://github.com/limkimsze-maker/consonants/raw/main/sound_g.mp3",
+  s: "https://github.com/limkimsze-maker/consonants/raw/main/sound_s.mp3",
+  u: "https://github.com/limkimsze-maker/consonants/raw/main/sound_u.mp3",
+  n: "https://github.com/limkimsze-maker/consonants/raw/main/sound_n.mp3",
+  f: "https://github.com/limkimsze-maker/consonants/raw/main/sound_f.mp3",
+  i: "https://github.com/limkimsze-maker/consonants/raw/main/sound_i.mp3",
+  x: "https://github.com/limkimsze-maker/consonants/raw/main/sound_x.mp3"
+};
+
+const wordList = [
+  { 
+    word: "bag", 
+    onset: "b", 
+    rime: "ag", 
+    meaning: "Bag - A container used to carry things.",
+    image: "https://github.com/limkimsze-maker/consonants/raw/6f1fc45cb232510ed2537f07b48f9bb8bbe236bf/bag.jfif"
+  },
+  { 
+    word: "sun", 
+    onset: "s", 
+    rime: "un", 
+    meaning: "Sun - The star at the center of our solar system.",
+    image: "https://github.com/limkimsze-maker/consonants/raw/6f1fc45cb232510ed2537f07b48f9bb8bbe236bf/sun.jfif"
+  },
+  { 
+    word: "fix", 
+    onset: "f", 
+    rime: "ix", 
+    meaning: "Fix - To repair something that is broken.",
+    image: "https://github.com/limkimsze-maker/consonants/raw/6f1fc45cb232510ed2537f07b48f9bb8bbe236bf/fix.jfif"
+  }
+];
+
+let currentIndex = 0;
+
+function playSound(letter) {
+  return new Promise(resolve => {
+    const audio = new Audio(audioSources[letter]);
+    audio.onended = resolve;
+    audio.play();
+  });
+}
+
+async function playRime() {
+  const rime = wordList[currentIndex].rime;
+  document.getElementById("wordCard").innerText = rime;
+  await playSound(rime[0]);
+  await new Promise(r => setTimeout(r, 150));
+  await playSound(rime[1]);
+}
+
+async function playOnset() {
+  const onset = wordList[currentIndex].onset;
+  document.getElementById("wordCard").innerText = onset;
+  await playSound(onset);
+}
+
+async function playWord() {
+  const { onset, rime, word } = wordList[currentIndex];
+  document.getElementById("wordCard").innerText = word;
+  await playSound(onset);
+  await new Promise(r => setTimeout(r, 150));
+  await playSound(rime[0]);
+  await new Promise(r => setTimeout(r, 150));
+  await playSound(rime[1]);
+
+  // Success chime
+  const chime = new Audio("https://cdn.pixabay.com/audio/2022/03/15/audio_1190fa0b2d.mp3");
+  chime.play();
+}
+
+async function showMeaning() {
+  const current = wordList[currentIndex];
+
+  // Read the whole word before meaning
+  await playWord();
+
+  document.getElementById("meaningContainer").style.display = "flex";
+  document.getElementById("meaningText").textContent = `Meaning: ${current.meaning}`;
+  document.getElementById("meaningImage").src = current.image;
+  document.getElementById("meaningImage").alt = current.word + " image";
+
+  // Read meaning aloud
+  if ('speechSynthesis' in window) {
+    const utter = new SpeechSynthesisUtterance(current.meaning);
+    utter.rate = 0.9;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utter);
+  }
+}
+
+function nextWord() {
+  currentIndex = (currentIndex + 1) % wordList.length;
+  document.getElementById("wordCard").innerText = "---";
+  document.getElementById("meaningContainer").style.display = "none";
+  document.getElementById("meaningText").textContent = "";
+  document.getElementById("meaningImage").src = "";
+  document.getElementById("progressDisplay").innerText = `Word ${currentIndex + 1} of ${wordList.length}`;
+}
+</script>
+
+</body>
+</html>
