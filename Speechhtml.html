@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speech Recognition on Samsung</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            text-align: center;
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 18px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #output {
+            margin-top: 20px;
+            font-size: 16px;
+            max-width: 90%;
+            word-wrap: break-word;
+        }
+        #status {
+            color: #555;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Speech Recognition</h1>
+    <button id="start-btn">Start Listening</button>
+    <p id="status">Click the button to start speech recognition</p>
+    <div id="output">Transcribed text will appear here...</div>
+
+    <script>
+        // Check if the browser supports the Web Speech API
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+        if (SpeechRecognition) {
+            const recognition = new SpeechRecognition();
+            recognition.continuous = true; // Continuous listening
+            recognition.interimResults = true; // Show interim results
+            recognition.lang = 'en-US'; // Set language (can be changed, e.g., 'es-ES' for Spanish)
+
+            const startBtn = document.getElementById('start-btn');
+            const status = document.getElementById('status');
+            const output = document.getElementById('output');
+            let isListening = false;
+
+            // Toggle speech recognition on button click
+            startBtn.addEventListener('click', () => {
+                if (!isListening) {
+                    recognition.start();
+                    startBtn.textContent = 'Stop Listening';
+                    status.textContent = 'Listening... Speak now!';
+                    isListening = true;
+                } else {
+                    recognition.stop();
+                    startBtn.textContent = 'Start Listening';
+                    status.textContent = 'Stopped. Click to start again.';
+                    isListening = false;
+                }
+            });
+
+            // Handle speech recognition results
+            recognition.onresult = (event) => {
+                let interimTranscript = '';
+                let finalTranscript = '';
+
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcript + ' ';
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+
+                output.textContent = finalTranscript + interimTranscript;
+            };
+
+            // Handle errors
+            recognition.onerror = (event) => {
+                status.textContent = `Error occurred: ${event.error}`;
+                console.error('Speech recognition error:', event.error);
+                startBtn.textContent = 'Start Listening';
+                isListening = false;
+            };
+
+            // Handle end of recognition
+            recognition.onend = () => {
+                if (isListening) {
+                    recognition.start(); // Restart if still in listening mode
+                } else {
+                    status.textContent = 'Stopped. Click to start again.';
+                }
+            };
+        } else {
+            document.getElementById('status').textContent = 'Sorry, your browser does not support speech recognition.';
+            document.getElementById('start-btn').disabled = true;
+        }
+    </script>
+</body>
+</html>
