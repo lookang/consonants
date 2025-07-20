@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Phonics Letter Game - Trace then Speak</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f8ff;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 20px;
+      gap: 30px;
+    }
+    #gameArea {
+      text-align: center;
+      max-width: 500px;
+    }
+    #prompt {
+      font-size: 24px;
+      margin: 10px 0;
+    }
+    #listeningIndicator {
+      color: red;
+      font-weight: bold;
+      font-size: 18px;
+      display: none;
+      margin-left: 10px;
+      user-select: none;
+    }
+    #canvas {
+      border: 2px solid #333;
+      touch-action: none;
+      background: #fff;
+      display: block;
+      margin: 0 auto 10px auto;
+      cursor: crosshair;
+    }
+    #speakBtn {
+      font-size: 18px;
+      padding: 10px 20px;
+      margin-top: 10px;
+      cursor: pointer;
+    }
+    #liveTranscript {
+      font-size: 20px;
+      color: #333;
+      margin-top: 10px;
+      min-height: 28px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    #sidePanel {
+      min-width: 200px;
+      background: #e6f7ff;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 10px;
+    }
+    #sidePanel h3 {
+      margin: 10px 0 5px;
+    }
+    #correctList, #reviewList {
+      text-align: left;
+      font-size: 18px;
+      margin: 5px 0 10px 0;
+      min-height: 50px;
+    }
+    .letterItem {
+      display: inline-block;
+      margin: 3px 5px;
+      padding: 5px 10px;
+      background: #d9f7be;
+      border: 1px solid #52c41a;
+      border-radius: 5px;
+    }
+    .reviewItem {
+      background: #fff1f0;
+      border: 1px solid #f5222d;
+    }
+  </style>
+</head>
+<body>
+  <div id="gameArea">
+    <h1>Phonics Letter Game</h1>
+    <div id="prompt">Trace the letter on the screen.</div>
+    <canvas id="canvas" width="400" height="400"></canvas>
+    <button id="speakBtn" disabled>🎤 Speak Letter</button>
+    <div id="listeningIndicator">Listening...</div>
+    <div id="liveTranscript"></div>
+  </div>
+
+  <div id="sidePanel">
+    <h3>✅ Correct Letters</h3>
+    <div id="correctList"></div>
+    <h3>❌ Review Letters</h3>
+    <div id="reviewList"></div>
+  </div>
+
+  <audio id="successSound" src="https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3"></audio>
+
+  <script>
+    let letters = ['b', 'c', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'm', 'n', 'p', 'q', 'r', 's', 't', 'v', 'w', 'x', 'y', 'z'];
+    letters = letters.sort(() => Math.random() - 0.5);
+    let currentIndex = 0;
+    let wrongLetters = [];
+    let correctLetters = [];
+
+    const prompt = document.getElementById('prompt');
+    const canvas = document.getElementById('canvas');
+    const speakBtn = document.getElementById('speakBtn');
+    const successSound = document.getElementById('successSound');
+    const transcriptDiv = document.getElementById('liveTranscript');
+    const listeningIndicator = document.getElementById('listeningIndicator');
+    const correctListDiv = document.getElementById('correctList');
+    const reviewListDiv = document.getElementById('reviewList');
+
+    const ctx = canvas.getContext('2d');
+    let drawing = false;
+    let traced = false;
+    let tracingCorrect = false;
+    let speechCorrect = false;
+
+    function drawLetterOnCanvas(letter) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.font = "220px Arial";
+      ctx.fillStyle = "#ddd";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(letter, canvas.width / 2, canvas.height / 2);
+    }
+
+    function showLetter(index) {
+      const letter = letters[index];
+      prompt.textContent = `Trace the letter: ${letter}`;
+      transcriptDiv.textContent = "";
+      tracingCorrect = false;
+      speechCorrect = false;
+      traced = false;
+      speakBtn.disabled = true;
+      drawLetterOnCanvas(letter);
+    }
+
+    canvas.addEventListener('pointerdown', (e) => {
+      drawing = true;
+      ctx.beginPath();
+      ctx.moveTo(e.offsetX, e.offsetY);
+    });
+
+    canvas.addEventListener('pointermove', (e) => {
+      if (!drawing) return;
+      ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = '#000';
+      ctx.lineTo(e.offsetX, e.offsetY);
+      ctx.stroke();
+    });
+
+    canvas.addEventListener('pointerup', () => {
+      if (!drawing) return;
+      drawing = false;
+      traced = true;
+      tracingCorrect = true; // assume tracing is correct
+      prompt.textContent = "🖊️ Tracing done! Now click Speak Letter and say the letter.";
+      speakBtn.disabled = false;
+    });
+
+    speakBtn.addEventListener('click', () => {
+      if (!traced) {
+        alert("Please trace the letter first!");
+        return;
+      }
+
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert("Speech Recognition API is not supported in this browser. Please use Chrome.");
+        return;
+      }
+
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'en-US';
+      recognition.interimResults = true;
+      recognition.maxAlternatives = 1;
+
+      listeningIndicator.style.display = 'inline';
+      transcriptDiv.textContent = "";
+      prompt.textContent = "🎤 Listening... Please say the letter.";
+      speakBtn.disabled = true;
+
+      recognition.onresult = (event) => {
+        let transcript = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        transcriptDiv.textContent = "📝 You said: " + transcript;
+
+        if (event.results[event.results.length - 1].isFinal) {
+          const spokenLetter = transcript.toLowerCase().trim();
+          const expectedLetter = letters[currentIndex];
+          if (spokenLetter === expectedLetter) {
+            speechCorrect = true;
+            prompt.textContent = `✔️ Correct pronunciation: "${spokenLetter}"`;
+          } else {
+            speechCorrect = false;
+            prompt.textContent = `❌ Incorrect pronunciation: heard "${spokenLetter}".`;
+          }
+          finalizeAssessment();
+        }
+      };
+
+      recognition.onerror = (event) => {
+        listeningIndicator.style.display = 'none';
+        speechCorrect = false;
+        prompt.textContent = `🎤 Error: ${event.error}.`;
+        finalizeAssessment();
+      };
+
+      recognition.onspeechend = () => {
+        recognition.stop();
+      };
+
+      recognition.onend = () => {
+        listeningIndicator.style.display = 'none';
+        speakBtn.disabled = false;
+      };
+
+      recognition.start();
+    });
+
+    function finalizeAssessment() {
+      const currentLetter = letters[currentIndex];
+      if (tracingCorrect && speechCorrect) {
+        prompt.textContent += " 🎉 Both correct! Moving on...";
+        successSound.play();
+        addLetterToList(currentLetter, correctListDiv, "letterItem");
+      } else {
+        prompt.textContent += " ❌ Adding to review and moving on.";
+        wrongLetters.push(currentLetter);
+        addLetterToList(currentLetter, reviewListDiv, "letterItem reviewItem");
+      }
+      setTimeout(() => moveToNextLetter(), tracingCorrect && speechCorrect ? 1500 : 3000);
+    }
+
+    function addLetterToList(letter, container, className) {
+      const span = document.createElement("span");
+      span.className = className;
+      span.textContent = letter;
+      container.appendChild(span);
+    }
+
+    function moveToNextLetter() {
+      currentIndex++;
+      if (currentIndex < letters.length) {
+        showLetter(currentIndex);
+      } else if (wrongLetters.length > 0) {
+        letters = wrongLetters;
+        wrongLetters = [];
+        currentIndex = 0;
+        prompt.textContent = "📖 Review Phase: Let's try the missed letters again.";
+        setTimeout(() => showLetter(currentIndex), 2000);
+      } else {
+        prompt.textContent = "🎉 All letters complete!";
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.font = "100px Arial";
+        ctx.fillStyle = "green";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("✔️", canvas.width / 2, canvas.height / 2);
+        speakBtn.disabled = true;
+      }
+    }
+
+    showLetter(currentIndex);
+  </script>
+</body>
+</html>
