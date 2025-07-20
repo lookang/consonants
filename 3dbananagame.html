@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Banana AK-47 Shooter</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    canvas { display: block; }
+    #hud {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: white;
+      font-size: 24px;
+      font-family: Comic Sans MS, cursive, sans-serif;
+      background: rgba(0,0,0,0.5);
+      padding: 10px;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+<div id="hud">Bananas Hit: 0 / 10</div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
+
+<script>
+  // Scene setup
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+  const renderer = new THREE.WebGLRenderer({antialias: true});
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  // Light
+  const light = new THREE.PointLight(0xffffff, 1);
+  light.position.set(10, 10, 10);
+  scene.add(light);
+
+  // Ground
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(100, 100),
+    new THREE.MeshStandardMaterial({color: 0x228B22})
+  );
+  ground.rotation.x = -Math.PI / 2;
+  scene.add(ground);
+
+  // Hero
+  const hero = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.5, 0.5, 2, 16),
+    new THREE.MeshStandardMaterial({color: 0x00ffff})
+  );
+  hero.position.y = 1;
+  scene.add(hero);
+
+  camera.position.set(0, 2, 5);
+  camera.lookAt(hero.position);
+
+  // Bananas
+  const bananas = [];
+
+  function createBanana() {
+    const banana = new THREE.Mesh(
+      new THREE.CapsuleGeometry(0.1, 0.4, 4, 8),
+      new THREE.MeshStandardMaterial({color: 0xffff00})
+    );
+    banana.position.set(hero.position.x, hero.position.y + 1, hero.position.z);
+    banana.velocity = new THREE.Vector3(0, 0, -1);
+    scene.add(banana);
+    bananas.push(banana);
+  }
+
+  // Dummies
+  const dummies = [];
+  let bananasHit = 0;
+  const hud = document.getElementById("hud");
+
+  function spawnDummy() {
+    const dummy = new THREE.Mesh(
+      new THREE.BoxGeometry(1, 2, 0.5),
+      new THREE.MeshStandardMaterial({color: 0xff0000})
+    );
+    dummy.position.set(Math.random() * 20 - 10, 1, -Math.random() * 40 - 10);
+    scene.add(dummy);
+    dummies.push(dummy);
+  }
+
+  for (let i = 0; i < 10; i++) {
+    spawnDummy();
+  }
+
+  // Shooting
+  window.addEventListener("click", () => {
+    if (bananasHit >= 10) return;
+    createBanana();
+  });
+
+  // Game loop
+  function animate() {
+    requestAnimationFrame(animate);
+
+    // Move bananas
+    for (let i = bananas.length - 1; i >= 0; i--) {
+      bananas[i].position.add(bananas[i].velocity.clone().multiplyScalar(0.5));
+
+      // Check for hit
+      for (let j = dummies.length - 1; j >= 0; j--) {
+        if (bananas[i].position.distanceTo(dummies[j].position) < 1) {
+          scene.remove(dummies[j]);
+          dummies.splice(j, 1);
+          scene.remove(bananas[i]);
+          bananas.splice(i, 1);
+          bananasHit++;
+          hud.textContent = `Bananas Hit: ${bananasHit} / 10`;
+          if (bananasHit >= 10) {
+            hud.textContent = "🎉 You Win! 🎉";
+          }
+          break;
+        }
+      }
+    }
+
+    renderer.render(scene, camera);
+  }
+
+  animate();
+</script>
+</body>
+</html>
