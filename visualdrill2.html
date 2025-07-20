@@ -60,6 +60,30 @@
     let speechCorrect = false;
     let tracingCorrect = false;
 
+    const letterNames = {
+      b: "bee",
+      c: "see",
+      d: "dee",
+      f: "ef",
+      g: "jee",
+      h: "aitch",
+      j: "jay",
+      k: "kay",
+      l: "el",
+      m: "em",
+      n: "en",
+      p: "pee",
+      q: "cue",
+      r: "ar",
+      s: "es",
+      t: "tee",
+      v: "vee",
+      w: "double you",
+      x: "ex",
+      y: "why",
+      z: "zee"
+    };
+
     function showLetter(index) {
       const letter = letters[index];
       prompt.textContent = `Name and trace this letter: ${letter}`;
@@ -96,9 +120,8 @@
       speechSynthesis.speak(utterance);
     }
 
-    // NEW FUNCTION: Speak letter name (like "bee", "see", etc.)
+    // Speak letter name like "bee", "see", etc.
     function speakLetterName(letter) {
-      // Capitalize for clearer pronunciation (some TTS voices prefer uppercase)
       const letterToSpeak = letter.toUpperCase();
       const utterance = new SpeechSynthesisUtterance(letterToSpeak);
       utterance.lang = 'en-US';
@@ -110,11 +133,9 @@
         // Speak the letter name first
         speakLetterName(letters[currentIndex]);
 
-        // Then show success message and play sounds
         prompt.textContent = "🎉 Success!";
         successSound.play();
 
-        // Slight delay before "Well done" to avoid overlapping speech
         setTimeout(() => {
           playWellDoneVoice();
           nextBtn.disabled = false;
@@ -138,16 +159,19 @@
         prompt.textContent = "🎤 Listening... Please say the letter.";
 
         recognition.onresult = (event) => {
-          const result = event.results[0][0].transcript;
-          const expected = letters[currentIndex];
-          if (result.toLowerCase().includes(expected)) {
+          const result = event.results[0][0].transcript.toLowerCase().trim();
+          const expectedLetter = letters[currentIndex];
+          const expectedName = letterNames[expectedLetter];
+
+          // Check if recognized result matches expected letter name exactly or contains it
+          if (result === expectedName || result.includes(expectedName)) {
             speechCorrect = true;
             prompt.textContent = "🎤 Correct pronunciation. Now trace the letter.";
             checkIfReadyToProceed();
           } else {
-            prompt.textContent = "We will try again during review.";
-            if (!wrongLetters.includes(expected)) {
-              wrongLetters.push(expected);
+            prompt.textContent = `We will try again during review. You said "${result}", expected "${expectedName}".`;
+            if (!wrongLetters.includes(expectedLetter)) {
+              wrongLetters.push(expectedLetter);
             }
           }
         };
