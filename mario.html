@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Learning Journey</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #f6d365 0%, #fda085 25%, #fbc2eb 50%, #a18cd1 75%, #f6d365 100%);
+            background-size: 400% 400%;
+            animation: gradientBG 10s ease infinite;
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            margin: 0;
+            overflow: hidden;
+        }
+        @keyframes gradientBG {
+            0% {background-position: 0% 50%;}
+            50% {background-position: 100% 50%;}
+            100% {background-position: 0% 50%;}
+        }
+        .content {
+            text-align: justify;
+            padding: 60px 40px;
+            color: #000;
+            font-size: 1.2em;
+            line-height: 1.6em;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 15px;
+        }
+        .mario {
+            width: 80px;
+            position: absolute;
+            top: 10px;
+            animation: bounce 2s infinite ease-in-out;
+        }
+        .mario.left {
+            left: 10px;
+        }
+        .mario.right {
+            right: 10px;
+        }
+        @keyframes bounce {
+            0%, 100% {transform: translateY(0);}
+            50% {transform: translateY(-20px);}
+        }
+        h1 {
+            text-align: center;
+            font-size: 2em;
+            margin-bottom: 20px;
+            color: #000;
+        }
+        ul {
+            list-style-type: disc;
+            margin-left: 40px;
+        }
+        .music-btn {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #ff4757;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1em;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+        .music-btn:hover {
+            background: #ff6b81;
+        }
+    </style>
+</head>
+<body>
+
+    <img src="https://raw.githubusercontent.com/limkimsze-maker/consonants/0501f87eb74c5f2880544d029754ada0eaf292af/mario.jpg" class="mario left">
+    <img src="https://raw.githubusercontent.com/limkimsze-maker/consonants/0501f87eb74c5f2880544d029754ada0eaf292af/mario.jpg" class="mario right">
+
+    <div class="content">
+        <h1>My Learning Journey</h1>
+        <ul>
+            <li>Synergy between different sections in SALIS.</li>
+            <li>Immerse myself in the world of production and release planning of SLS.</li>
+            <li>Learnt in depth about different tools used currently and upcoming new tools that will be released in near future.</li>
+            <li>Given the opportunity to provide feedback for Authoring Co Pilot's User Interface.</li>
+            <li>Biggest takeaway is learning how to create resources using HTML5 and embedding them into SLS.</li>
+            <li>I am able to use what I have learnt to digitise SDR 2.0 School Based Dyslexic Remediation Resources, thus helping many teachers and pupils to embrace new technologies and learn well.</li>
+        </ul>
+    </div>
+
+    <button class="music-btn" onclick="toggleMusic()">Play/Stop Music</button>
+    <audio id="marioMusic" src="https://raw.githubusercontent.com/limkimsze-maker/consonants/b6822f5742b1987f1769a40afa60430dfec43dc5/Super%20Mario%20Bros.%20medley.mp3"></audio>
+
+    <script>
+        const audio = document.getElementById('marioMusic');
+        let isPlaying = false;
+
+        function toggleMusic() {
+            if (isPlaying) {
+                audio.pause();
+                isPlaying = false;
+            } else {
+                audio.play();
+                isPlaying = true;
+            }
+        }
+
+        audio.addEventListener('ended', () => {
+            isPlaying = false;
+        });
+    </script>
+
+</body>
+</html>
