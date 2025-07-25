@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trace Lowercase b</title>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Lexend', sans-serif;
+      text-align: center;
+      background: #f0f8ff;
+      margin: 20px;
+    }
+    canvas {
+      border: 2px solid #333;
+      background: white;
+      touch-action: none;
+      display: block;
+      margin: 0 auto;
+    }
+    #message {
+      font-size: 24px;
+      margin-top: 20px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Trace Lowercase <em>b</em></h1>
+<canvas id="canvas" width="500" height="400"></canvas>
+<div id="message"></div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const message = document.getElementById('message');
+
+// Reference stroke
+const referencePoints = [
+  { "x": 202, "y": 108.125 },
+  { "x": 193, "y": 263.125 },
+  { "x": 211, "y": 257.125 },
+  { "x": 207, "y": 179.125 },
+  { "x": 248, "y": 158.125 },
+  { "x": 280, "y": 165.125 },
+  { "x": 298, "y": 189.125 },
+  { "x": 304, "y": 225.125 },
+  { "x": 254, "y": 277.125 },
+  { "x": 215, "y": 232.125 }
+];
+
+const startPoint = referencePoints[0];
+const endPoint = referencePoints[referencePoints.length - 1];
+
+let isDrawing = false;
+let userPoints = [];
+let strokeStarted = false;
+
+function drawReference() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Letter background
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+  ctx.font = '220px Lexend, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('b', 250, 200);
+
+  // Stroke path
+  ctx.strokeStyle = 'blue';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(referencePoints[0].x, referencePoints[0].y);
+  for (let i = 1; i < referencePoints.length - 2; i++) {
+    const xc = (referencePoints[i].x + referencePoints[i + 1].x) / 2;
+    const yc = (referencePoints[i].y + referencePoints[i + 1].y) / 2;
+    ctx.quadraticCurveTo(referencePoints[i].x, referencePoints[i].y, xc, yc);
+  }
+  const last = referencePoints.length - 1;
+  ctx.quadraticCurveTo(referencePoints[last - 1].x, referencePoints[last - 1].y, referencePoints[last].x, referencePoints[last].y);
+  ctx.stroke();
+
+  // Start red dot
+  ctx.beginPath();
+  ctx.fillStyle = 'red';
+  ctx.arc(startPoint.x, startPoint.y, 6, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Arrowhead for ending
+  drawArrowHead(referencePoints[referencePoints.length - 2], endPoint);
+}
+
+function drawArrowHead(from, to) {
+  const headlen = 10;
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const angle = Math.atan2(dy, dx);
+  ctx.beginPath();
+  ctx.moveTo(to.x, to.y);
+  ctx.lineTo(to.x - headlen * Math.cos(angle - Math.PI / 6), to.y - headlen * Math.sin(angle - Math.PI / 6));
+  ctx.lineTo(to.x - headlen * Math.cos(angle + Math.PI / 6), to.y - headlen * Math.sin(angle + Math.PI / 6));
+  ctx.closePath();
+  ctx.fillStyle = 'blue';
+  ctx.fill();
+}
+
+function drawUserStroke() {
+  ctx.strokeStyle = 'orange';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  if (userPoints.length > 0) {
+    ctx.moveTo(userPoints[0].x, userPoints[0].y);
+    for (let i = 1; i < userPoints.length; i++) {
+      ctx.lineTo(userPoints[i].x, userPoints[i].y);
+    }
+  }
+  ctx.stroke();
+}
+
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+  const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+  return { x, y };
+}
+
+function handleStart(e) {
+  e.preventDefault();
+  const pos = getPos(e);
+  userPoints = [pos];
+  isDrawing = true;
+
+  // Check if near starting point
+  const distToStart = Math.hypot(pos.x - startPoint.x, pos.y - startPoint.y);
+  strokeStarted = distToStart < 30; // must begin near red dot
+}
+
+function handleMove(e) {
+  if (!isDrawing) return;
+  const pos = getPos(e);
+  userPoints.push(pos);
+  drawReference();
+  drawUserStroke();
+}
+
+function handleEnd() {
+  isDrawing = false;
+  validateTrace();
+}
+
+function validateTrace() {
+  if (!strokeStarted) {
+    setFeedback(false, "Start at the red dot!");
+    return;
+  }
+
+  const lastPoint = userPoints[userPoints.length - 1];
+  const distToEnd = Math.hypot(lastPoint.x - endPoint.x, lastPoint.y - endPoint.y);
+  if (distToEnd > 30) {
+    setFeedback(false, "End at the arrow!");
+    return;
+  }
+
+  // Match reference path
+  let matched = 0;
+  referencePoints.forEach(ref => {
+    for (const user of userPoints) {
+      const dist = Math.hypot(ref.x - user.x, ref.y - user.y);
+      if (dist < 25) {
+        matched++;
+        break;
+      }
+    }
+  });
+
+  if (matched >= referencePoints.length * 0.7) {
+    setFeedback(true, "Success!");
+  } else {
+    setFeedback(false, "Trace closely along the path.");
+  }
+}
+
+function setFeedback(success, msg) {
+  message.textContent = success ? `✅ ${msg}` : `❌ ${msg}`;
+  message.style.color = success ? "green" : "red";
+  speak(msg);
+}
+
+function speak(text) {
+  const utter = new SpeechSynthesisUtterance(text);
+  speechSynthesis.speak(utter);
+}
+
+// Init
+drawReference();
+speak("Trace the letter");
+
+canvas.addEventListener('mousedown', handleStart);
+canvas.addEventListener('mousemove', handleMove);
+canvas.addEventListener('mouseup', handleEnd);
+canvas.addEventListener('mouseleave', handleEnd);
+canvas.addEventListener('touchstart', handleStart);
+canvas.addEventListener('touchmove', handleMove);
+canvas.addEventListener('touchend', handleEnd);
+</script>
+
+</body>
+</html>
