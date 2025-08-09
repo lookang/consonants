@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HTML5 Interactive</title>
+  <script src="xapiwrapper.min.js"></script>
+  <script src="index.js" defer></script>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Lexend', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background-color: #f0f0f0;
+      overflow: hidden; /* Prevent scrollbars */
+    }
+    .container {
+      background: white;
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+      width: 590px;
+      height: 470px;
+      overflow: auto; /* Enable scrollbars if content overflows */
+    }
+    .center {
+      text-align: center;
+    }
+    input, select, button {
+      margin: 5px;
+      padding: 6px;
+      font-size: 14px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      background-color: #28a745;
+      color: white;
+      cursor: pointer;
+      border: none;
+    }
+    button:hover {
+      background-color: #218838;
+    }
+    .criteria-group {
+      margin: 5px 0;
+      padding: 5px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background-color: #fafafa;
+    }
+    .criteria-group button {
+      background-color: #dc3545;
+    }
+    .criteria-group button:hover {
+      background-color: #c82333;
+    }
+    .output-container {
+      margin-top: 10px;
+      padding: 5px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background-color: #fafafa;
+      overflow: auto; /* Ensure content is scrollable if too large */
+      max-height: 200px;
+    }
+    pre {
+      background-color: #e9ecef;
+      padding: 5px;
+      border-radius: 4px;
+      white-space: pre-wrap; /* Allows for text wrapping */
+      word-wrap: break-word; /* Ensures long words are wrapped */
+      margin: 0;
+      overflow-x: auto; /* Adds horizontal scrollbar if necessary */
+    }
+    .canvas-container {
+      position: relative;
+      width: 500px;
+      height: 400px;
+      margin: auto;
+    }
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      border: 2px solid #333;
+      background: transparent;
+      touch-action: none;
+    }
+    #message {
+      font-size: 24px;
+      margin-top: 20px;
+      font-weight: bold;
+    }
+  </style>
+  <style>
+    .center, #criteria-container, #scenario-options, .output-container {
+        display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Trace Lowercase <em>b</em></h1>
+    <div class="canvas-container">
+      <canvas id="bgCanvas" width="500" height="400"></canvas>
+      <canvas id="drawCanvas" width="500" height="400"></canvas>
+    </div>
+    <div id="message"></div>
+    <p class="center"><strong>HTML5 Interactive</strong></p>
+    
+    <div class="center">
+      <label for="score-input">Score:</label>
+      <input type="text" id="score-input">
+      
+      <label for="feedback-input">Feedback:</label>
+      <input type="text" id="feedback-input" placeholder="Enter feedback">
+    </div>
+
+    <div id="criteria-container" class="center">
+      <!-- Criteria groups will be populated here -->
+    </div>
+
+    <div class="center">
+      <button id="add-criteria-button">Add Rubric Criteria</button>
+    </div>
+
+    <div id="scenario-options">
+      <span>Scenario:</span>
+      <br>
+      <label><input type="radio" name="scenario-option" value="all">All</label><br>
+      <label><input type="radio" name="scenario-option" value="score">Send score only</label><br>
+      <label><input type="radio" name="scenario-option" value="score-with-feedback">Send score with feedback</label><br>
+      <label><input type="radio" name="scenario-option" value="score-with-rubric">Send score with grading rubric</label><br>
+      <label><input type="radio" name="scenario-option" value="rubric">Send grading rubric only</label><br>
+      <label><input type="radio" name="scenario-option" value="save-input">Save input value only</label>
+    </div>
+
+    <div class="center">
+      <button id="save-store">Send/Save</button>
+      <button id="clear-inputs">Clear</button>
+    </div>
+    
+    <div class="output-container">
+      <pre id="result"></pre>
+      <hr class="separator">
+      <pre id="getState"></pre>
+      <hr class="separator">
+      <pre id="questionId"></pre>
+      <pre id="userId"></pre>
+      <pre id="cookieId"></pre>
+    </div>
+  </div>
+
+  <script>
+    // --- From index_sim.html ---
+    const bgCanvas = document.getElementById('bgCanvas');
+    const bgCtx = bgCanvas.getContext('2d');
+    const drawCanvas = document.getElementById('drawCanvas');
+    const ctx = drawCanvas.getContext('2d');
+    const message = document.getElementById('message');
+
+    // Reference stroke points
+    const referencePoints = [
+      { "x": 202, "y": 108.125 },
+      { "x": 193, "y": 263.125 },
+      { "x": 211, "y": 257.125 },
+      { "x": 207, "y": 179.125 },
+      { "x": 248, "y": 158.125 },
+      { "x": 280, "y": 165.125 },
+      { "x": 298, "y": 189.125 },
+      { "x": 304, "y": 225.125 },
+      { "x": 254, "y": 277.125 },
+      { "x": 215, "y": 232.125 }
+    ];
+
+    const startPoint = referencePoints[0];
+    const endPoint = referencePoints[referencePoints.length - 1];
+
+    let isDrawing = false;
+    let userPoints = [];
+    let strokeStarted = false;
+
+    function drawBackground() {
+      bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+      // We intentionally do NOT draw the stroke line here anymore
+    }
+
+    function drawOverlay() {
+      ctx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+
+      // Lexend "b"
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+      ctx.font = '220px Lexend, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('b', 250, 200);
+
+      // Red start dot
+      ctx.beginPath();
+      ctx.fillStyle = 'red';
+      ctx.arc(startPoint.x, startPoint.y, 6, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Optional arrowhead
+      drawArrowHead(referencePoints[referencePoints.length - 2], endPoint);
+
+      // User trace
+      ctx.beginPath();
+      ctx.strokeStyle = 'orange';
+      ctx.lineWidth = 4;
+      if (userPoints.length > 0) {
+        ctx.moveTo(userPoints[0].x, userPoints[0].y);
+        for (let i = 1; i < userPoints.length; i++) {
+          ctx.lineTo(userPoints[i].x, userPoints[i].y);
+        }
+      }
+      ctx.stroke();
+    }
+
+    function drawArrowHead(from, to) {
+      const headlen = 10;
+      const dx = to.x - from.x;
+      const dy = to.y - from.y;
+      const angle = Math.atan2(dy, dx);
+      ctx.beginPath();
+      ctx.moveTo(to.x, to.y);
+      ctx.lineTo(to.x - headlen * Math.cos(angle - Math.PI / 6), to.y - headlen * Math.sin(angle - Math.PI / 6));
+      ctx.lineTo(to.x - headlen * Math.cos(angle + Math.PI / 6), to.y - headlen * Math.sin(angle + Math.PI / 6));
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(0, 0, 255, 0.15)';
+      ctx.fill();
+    }
+
+    function getPos(e) {
+      const rect = drawCanvas.getBoundingClientRect();
+      const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+      const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+      return { x, y };
+    }
+
+    function handleStart(e) {
+      e.preventDefault();
+      const pos = getPos(e);
+      userPoints = [pos];
+      isDrawing = true;
+
+      const distToStart = Math.hypot(pos.x - startPoint.x, pos.y - startPoint.y);
+      strokeStarted = distToStart < 30;
+    }
+
+    function handleMove(e) {
+      if (!isDrawing) return;
+      const pos = getPos(e);
+      userPoints.push(pos);
+      drawOverlay();
+    }
+
+    function handleEnd() {
+      if (!isDrawing) return;
+      isDrawing = false;
+      validateTrace();
+    }
+
+    function validateTrace() {
+      if (!strokeStarted) {
+        setFeedback(false, "Start at the red dot!");
+        return;
+      }
+
+      const lastPoint = userPoints[userPoints.length - 1];
+      const distToEnd = Math.hypot(lastPoint.x - endPoint.x, lastPoint.y - endPoint.y);
+      if (distToEnd > 30) {
+        setFeedback(false, "End at the arrow!");
+        return;
+      }
+
+      let matched = 0;
+      referencePoints.forEach(ref => {
+        for (const user of userPoints) {
+          const dist = Math.hypot(ref.x - user.x, ref.y - user.y);
+          if (dist < 25) {
+            matched++;
+            break;
+          }
+        }
+      });
+
+      if (matched >= referencePoints.length * 0.7) {
+        setFeedback(true, "Success!");
+      } else {
+        setFeedback(false, "Trace closely along the path.");
+      }
+    }
+
+    function setFeedback(success, msg) {
+      message.textContent = success ? `✅ ${msg}` : `❌ ${msg}`;
+      message.style.color = success ? "green" : "red";
+      speak(msg);
+      if (success) {
+        document.getElementById('score-input').value = 1;
+        document.getElementById('feedback-input').value = 'Success';
+        updateStore();
+      }
+    }
+
+    function speak(text) {
+      const utter = new SpeechSynthesisUtterance(text);
+      speechSynthesis.speak(utter);
+    }
+
+    // Init
+    drawBackground();
+    drawOverlay();
+    speak("Trace the letter");
+
+    drawCanvas.addEventListener('mousedown', handleStart);
+    drawCanvas.addEventListener('mousemove', handleMove);
+    drawCanvas.addEventListener('mouseup', handleEnd);
+    drawCanvas.addEventListener('mouseleave', handleEnd);
+    drawCanvas.addEventListener('touchstart', handleStart);
+    drawCanvas.addEventListener('touchmove', handleMove);
+    drawCanvas.addEventListener('touchend', handleEnd);
+    
+    // --- From index_workingfile.html ---
+    function populateData(data) {
+      // Populate form with retrieved data
+      document.getElementById('score-input').value = data?.score || '';
+      document.getElementById('feedback-input').value = data?.feedback || '';
+
+      const criteriaContainer = document.getElementById('criteria-container');
+      criteriaContainer.innerHTML = ''; // Clear existing criteria groups
+
+      for (const [criteriaId, criteriaData] of Object.entries(data?.rubric || {})) {
+        const criteriaGroup = document.createElement('div');
+        criteriaGroup.classList.add('criteria-group');
+        criteriaGroup.innerHTML = `
+          <label>Rubric Criteria:</label>
+          <select class="criteria-id">
+            <option value="">Select Criteria</option>
+            <option value="1" ${criteriaId === 'criteria-1' ? 'selected' : ''}>1</option>
+            <option value="2" ${criteriaId === 'criteria-2' ? 'selected' : ''}>2</option>
+            <option value="3" ${criteriaId === 'criteria-3' ? 'selected' : ''}>3</option>
+            <option value="4" ${criteriaId === 'criteria-4' ? 'selected' : ''}>4</option>
+            <option value="5" ${criteriaId === 'criteria-5' ? 'selected' : ''}>5</option>
+            <option value="6" ${criteriaId === 'criteria-6' ? 'selected' : ''}>6</option>
+            <option value="7" ${criteriaId === 'criteria-7' ? 'selected' : ''}>7</option>
+            <option value="8" ${criteriaId === 'criteria-8' ? 'selected' : ''}>8</option>
+          </select>
+          <input type="number" class="criteria-score" value="${criteriaData?.score || 0}" min="0">
+          <input type="text" class="criteria-feedback" value="${criteriaData?.feedback || ''}">
+          <button class="remove-criteria-button">Remove Criteria</button>
+        `;
+        criteriaContainer.appendChild(criteriaGroup);
+
+        // Attach event listener to the newly added remove button
+        criteriaGroup.querySelector('.remove-criteria-button').addEventListener('click', function() {
+          criteriaGroup.remove();
+        });
+      }
+    }
+
+    function updateStore() {
+      // Gather data from inputs
+      const score = formatValue(document.getElementById('score-input').value);
+      const feedback = document.getElementById('feedback-input').value || undefined;
+
+      // Gather criteria data
+      const criteriaElements = document.querySelectorAll('.criteria-group');
+      const rubric = {};
+      criteriaElements.forEach(element => {
+        const criteriaId = element.querySelector('.criteria-id').value;
+        const criteriaScore = element.querySelector('.criteria-score').value;
+        const criteriaFeedback = element.querySelector('.criteria-feedback').value.trim();
+
+        // Ensure criteriaId has the prefix "criteria-"
+        const formattedCriteriaId = criteriaId ? `criteria-${criteriaId}` : '';
+
+        if (formattedCriteriaId) {
+          rubric[formattedCriteriaId] = {
+            score: formatValue(criteriaScore),
+            feedback: criteriaFeedback || undefined
+          };
+        }
+      });
+
+      let state;
+
+      switch (document.querySelector('input[name="scenario-option"]:checked')?.value) {
+        case "score":
+          state = {
+            score: score
+          };
+          break;
+        case "score-with-feedback":
+          state = {
+            score: score,
+            feedback: feedback
+          };
+          break;
+          break;
+        case "score-with-rubric":
+          state = {
+            score: score,
+            feedback: feedback,
+            rubric: Object.keys(rubric).length > 0 ? rubric : undefined
+          };
+          break;
+        case "rubric":
+          state = {
+            rubric: rubric
+          };
+          break;
+        case "save-input":
+          state = {
+            data: {
+              score: score,
+              feedback: feedback,
+              rubric: rubric
+            }
+          };
+          break;
+        default:
+          state = {
+            score: score,
+            feedback: feedback,
+            rubric: Object.keys(rubric).length > 0 ? rubric : undefined,
+            data: {
+              score: score,
+              feedback: feedback,
+              rubric: rubric
+            }
+          }
+          break;
+      }
+
+      storeState(state);
+    }
+
+    function isNumber(value) {
+      return !isNaN(parseFloat(value)) && isFinite(value);
+    }
+
+    function formatValue(value) {
+      return isNumber(value) ? parseFloat(value) : value;
+    }
+
+    // Fetch data on page load
+    window.addEventListener('load', function() {
+      const store = getState();
+      if (store?.data) {
+        populateData(store.data);
+      }
+    });
+
+    document.getElementById('add-criteria-button').addEventListener('click', function() {
+      const criteriaContainer = document.getElementById('criteria-container');
+      const criteriaGroup = document.createElement('div');
+      criteriaGroup.classList.add('criteria-group');
+      criteriaGroup.innerHTML = `
+        <label>Rubric Criteria:</label>
+        <select class="criteria-id">
+          <option value="">Select Criteria</option>
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+          <option value="7">7</option>
+          <option value="8">8</option>
+        </select>
+        <input type="number" class="criteria-score" placeholder="Score" min="0">
+        <input type="text" class="criteria-feedback" placeholder="Feedback">
+        <button class="remove-criteria-button">Remove Criteria</button>
+      `;
+      criteriaContainer.appendChild(criteriaGroup);
+
+      // Attach event listener to the newly added remove button
+      criteriaGroup.querySelector('.remove-criteria-button').addEventListener('click', function() {
+        criteriaGroup.remove();
+      });
+    });
+
+    document.getElementById('save-store').addEventListener('click', function() {
+      updateStore();
+    });
+
+    document.getElementById('clear-inputs').addEventListener('click', function() {
+      // Clear form inputs
+      document.getElementById('score-input').value = '';
+      document.getElementById('feedback-input').value = '';
+
+      // Clear criteria groups
+      const criteriaContainer = document.getElementById('criteria-container');
+      criteriaContainer.innerHTML = '';
+      updateStore();
+    });
+  </script>
+</body>
+</html>
